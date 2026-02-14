@@ -10,13 +10,20 @@ namespace Jobby.Dtos.OrganizationMembersDto
      string Email,
     string InvitedRole ,
     // Store hashed token (not the raw token)
-     string TokenHash,
+     //string TokenHash,
      DateTime ExpiresAt ,
     DateTime? AcceptedAt,
     Guid CreatedByUserId,
     DateTime CreatedAt,
     DateTimeOffset JoinedAt 
       );
+    public record OrganizationInvitesListDto
+    (OrganizationInvitesDto[] data,
+     int pageNumber,
+     int pageLimit,
+     int total
+     );
+
     public record CreateInviteRequestDto(
         string Email,
        string InvitedRole

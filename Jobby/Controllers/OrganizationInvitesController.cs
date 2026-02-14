@@ -50,7 +50,7 @@ namespace Jobby.Controllers
          //    Guid OrganizationId,
         }
         [Authorize]
-        [HttpPost("/accept")]
+        [HttpPost("accept")]
         public async Task<ActionResult> AcceptInvite(AcceptInviteRequestDto req, IValidator<AcceptInviteRequestDto> validator,UserManager<User> userManager,CancellationToken ct)
         {
             var result = await validator.ValidateAsync(req);
@@ -97,7 +97,7 @@ namespace Jobby.Controllers
             return NoContent();
         }
         [Authorize]
-        [HttpPost("/decline")]
+        [HttpPost("decline")]
         public async Task<ActionResult> DeclineInvite(DeclineInviteRequestDto req,IValidator<DeclineInviteRequestDto> validator,CancellationToken ct)
         {
          var result = await validator.ValidateAsync(req, ct);
@@ -139,6 +139,24 @@ namespace Jobby.Controllers
             await db.SaveChangesAsync(ct);
             return NoContent();
         }
+        [Authorize]
+        [HttpGet("{orgId:guid}")]
+        public async Task<ActionResult<OrganizationInvitesListDto>> GetAllOrganizationInvites(Guid orgId,[FromServices] IAuthorizationService auth, [FromQuery] int pageNumber, [FromQuery] int pageLimit, CancellationToken ct)
+        {
+            //Guid.TryParse(ClaimTypes.NameIdentifier, out var userId);
+            //var user = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, ct);
+            var result =await auth.AuthorizeAsync(User, orgId,"OrgAdmin");
+            if (!result.Succeeded)
+                return Forbid("organization user must be an admin of the organization to view this resource!");
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageLimit < 1) pageLimit = 20;
+            if (pageLimit > 100) pageLimit = 100;
+            var organizationInvitesList =await  db.OrganizationInvites.AsNoTracking().Where(x => x.OrganizationId == orgId).OrderBy(x => x.CreatedAt).Skip((pageNumber - 1) * pageLimit).Take(pageLimit).ToListAsync(ct);
+            var total = await db.OrganizationInvites.AsNoTracking().Where(x => x.OrganizationId == orgId).CountAsync(ct);
+            var responseDto = mapper.Map<OrganizationInvitesDto[]>(organizationInvitesList);
+            return Ok(new OrganizationInvitesListDto(data: responseDto, pageNumber: pageNumber, pageLimit: pageLimit, total: total));
+        }
+
         private static string GenerateToken()
         {
             // URL-safe-ish token: base64 without padding
