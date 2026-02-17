@@ -29,5 +29,6 @@ namespace Jobby.Data.entities
         public ICollection<ApplicationStatusHistory> StatusHistory { get; set; } = new List<ApplicationStatusHistory>();
         public ICollection<ApplicationNote> Notes { get; set; } = new List<ApplicationNote>();
         public ICollection<Interview> Interviews { get; set; } = new List<Interview>();
+        public ICollection<ApplicationFiles> ApplicationFiles { get; set; } = new List<ApplicationFiles>();
     }
 }

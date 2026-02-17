@@ -16,12 +16,13 @@ namespace Jobby.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class JobsController(AppDbContext db) : ControllerBase
+    public class JobsController(AppDbContext db, IMapper mapper) : ControllerBase
     {
         [Authorize]
         [HttpPost("{orgId:guid}")]
-        public async Task <ActionResult<JobsDto>> CreateJobPosting(JobsCreateRequestDto req,Mapper mapper,[FromServices] IAuthorizationService auth, IValidator<JobsCreateRequestDto> validator, Guid orgId,CancellationToken ct)
+        public async Task <ActionResult<JobsDto>> CreateJobPosting(JobsCreateRequestDto req,[FromServices] IAuthorizationService auth, IValidator<JobsCreateRequestDto> validator, Guid orgId,CancellationToken ct)
         {
+            
             // step 1 validate user and organization role
             var authResult =  await auth.AuthorizeAsync(User, orgId, "OrgAdmin");
             if (!authResult.Succeeded)
@@ -47,7 +48,7 @@ namespace Jobby.Controllers
 
         [Authorize]
         [HttpGet("{orgId:guid}")]
-        public async Task<ActionResult<JobsDetailsResponseDto>> GetAllOrgJobs(Mapper mapper, Guid orgId, [FromQuery] int PageNumber, [FromQuery] int PageLimit, CancellationToken ct, [FromQuery] string? SortField = "CreatedAt", [FromQuery] string? SortValue = "", [FromQuery] string? q = "")
+        public async Task<ActionResult<JobsDetailsResponseDto>> GetAllOrgJobs(Guid orgId, [FromQuery] int PageNumber, [FromQuery] int PageLimit, CancellationToken ct, [FromQuery] string? SortField = "CreatedAt", [FromQuery] string? SortValue = "", [FromQuery] string? q = "")
         {
            var query = db.Jobs.Where(x => x.Title.Contains(q) || (x.Description != null && x.Description.Contains(q))).Where(x=>x.OrganizationId == orgId);
             var term = q.Trim();
@@ -73,7 +74,7 @@ namespace Jobby.Controllers
         }
         [Authorize]
         [HttpPatch("{orgId:guid}/{jobId:guid}")]
-        public async Task<ActionResult<JobsDto>> UpdateJob(Guid jobId,Guid orgId, JobsUpdateRequestDto req,IValidator<JobsUpdateRequestDto> validator, Mapper mapper, [FromServices] IAuthorizationService auth, CancellationToken ct)
+        public async Task<ActionResult<JobsDto>> UpdateJob(Guid jobId,Guid orgId, JobsUpdateRequestDto req,IValidator<JobsUpdateRequestDto> validator, [FromServices] IAuthorizationService auth, CancellationToken ct)
         {
             var authorizationResult = await auth.AuthorizeAsync(User, orgId, "OrgRecruiter");
             if (!authorizationResult.Succeeded)

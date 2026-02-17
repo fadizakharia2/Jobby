@@ -11,6 +11,8 @@ using AutoMapper;
 using FluentValidation;
 using Jobby.Dtos.Validations.Organization;
 using Microsoft.AspNetCore.Authorization;
+using Azure.Storage.Blobs;
+using Azure.Identity;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -54,8 +56,28 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("OrgAdmin", policy => policy.Requirements.Add(
                new OrgRoleRequirement("ADMIN")))
     .AddPolicy("OrgRecruiter", policy => policy.Requirements.Add(
-            new OrgRoleRequirement("ADMIN", "RECRUITER")));
+            new OrgRoleRequirement("ADMIN", "RECRUITER")))
+    .AddPolicy("OrgCandidate",policy => policy.Requirements.Add(
+            new ApplicationRoleRequirement("ADMIN","RECRUITER","CANDIDATE")
+        ));
+if (builder.Environment.IsProduction())
+{
+    builder.Services.AddSingleton(x => {
+        var cfg = x.GetRequiredService<IConfiguration>();
+        var accountName = cfg["AzureStorage:AccountName"];
+        var serviceUri = $"https://{accountName}.blob.core.windows.net";
+        return new BlobServiceClient(new Uri(serviceUri), new DefaultAzureCredential());
+    });
+} else {
+    builder.Services.AddSingleton(x =>
+    {
+        var cfg = x.GetRequiredService<IConfiguration>();
+        var connectionString = cfg["AzureStorage:ConnectionString"];
+        return new BlobServiceClient(connectionString);
+    });
+}
 builder.Services.AddScoped<IAuthorizationHandler, OrgRoleHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, ApplicationRoleHandler>();
 var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

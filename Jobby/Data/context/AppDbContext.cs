@@ -16,6 +16,8 @@ namespace Jobby.Data.context
         public DbSet<Interview> Interview { get; set; }
         public DbSet<JobApplications> JobApplications { get; set; }
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+        public DbSet<Files> Files { get; set; }
+        public DbSet<ApplicationFiles> ApplicationFiles { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
