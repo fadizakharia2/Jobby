@@ -5,6 +5,7 @@ using Jobby.Data.context;
 using Jobby.Data.entities;
 using Jobby.Data.enums;
 using Jobby.Dtos.Application;
+using Jobby.Dtos.Mini;
 using Jobby.Dtos.Validations.ApplicationValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -36,29 +37,73 @@ namespace Jobby.Controllers
             var total = await baseQuery.CountAsync(ct);
 
             var apps = await baseQuery
-                .Include(x => x.Job)
-                .Include(x => x.CandidateUser)
-                .Include(x => x.ApplicationFiles).ThenInclude(af => af.File)
-                .Include(x => x.StatusHistory)
-                .Include(x => x.Notes)
-                .Include(x => x.Interviews)
-                .OrderByDescending(x => x.AppliedAt)
-                .Skip((pageNumber - 1) * pageLimit)
-                .Take(pageLimit)
-                .Select(x => new ApplicationDetailDto(
-                    Job: x.Job,
-                    Status: x.Status,
-                    CandidateUser: x.CandidateUser,
-                    Source: x.Source,
-                    CoverLetter: x.CoverLetter,
-                    ApplicationFiles: x.ApplicationFiles.ToList(),
-                    ApplicationStatusHistory: x.StatusHistory.ToList(),
-                    ApplicationNotes: x.Notes.ToList(),
-                    Interviews: x.Interviews.ToList(),
-                    AppliedAt: x.AppliedAt,
-                    LastStatusChangedAt: x.LastStatusChangedAt
-                ))
-                .ToListAsync(ct);
+.AsNoTracking()
+.OrderByDescending(x => x.AppliedAt)
+.Skip((pageNumber - 1) * pageLimit)
+.Take(pageLimit)
+.Select(x => new ApplicationDetailDto(
+ Id: x.Id,
+ Job: new JobMiniDto(
+     Id: x.Job.Id,
+     OrganizationId: x.Job.OrganizationId,
+     Title: x.Job.Title,
+     Location: x.Job.Location,
+     LocationType: x.Job.LocationType,
+     EmploymentType: x.Job.EmploymentType,
+     Status: x.Job.Status,
+     SalaryMin: x.Job.SalaryMin,
+     SalaryMax: x.Job.SalaryMax,
+     Currency: x.Job.Currency,
+     PublishedAt: x.Job.PublishedAt
+ ),
+ Status: x.Status,
+ Candidate: new CandidateMiniDto(
+     Id: x.CandidateUser.Id,
+     Email: x.CandidateUser.Email!,
+     FirstName: x.CandidateUser.FirstName,
+     LastName: x.CandidateUser.LastName
+ ),
+ Source: x.Source,
+ CoverLetter: x.CoverLetter,
+ Files: x.ApplicationFiles.Select(af => new ApplicationFileDto(
+     FileId: af.FileId,
+     OriginalName: af.File.OriginalName,
+     ContentType: af.File.ContentType,
+     SizeBytes: af.File.SizeBytes,
+     FilePurpose: af.FilePurpose
+ )).ToList(),
+ StatusHistory: x.StatusHistory.Select(h => new ApplicationStatusHistoryDto(
+     Id: h.Id,
+     FromStatus: h.FromStatus,
+     ToStatus: h.ToStatus,
+     ChangedByUserId: h.ChangedByUserId,
+     Reason: h.Reason,
+     ChangedAt: h.ChangedAt
+ )).ToList(),
+ Notes: x.Notes.Select(n => new ApplicationNoteDto(
+     Id: n.Id,
+     AuthorUserId: n.AuthorUserId,
+     NoteType: n.NoteType.ToString(),
+     Visibility: n.Visibility.ToString(),
+     Content: n.Content,
+     CreatedAt: n.CreatedAt
+ )).ToList(),
+ Interviews: x.Interviews.Select(i => new InterviewDto(
+     Id: i.Id,
+     Stage: i.Stage.ToString(),
+     StartsAt: i.StartsAt,
+     EndsAt: i.EndsAt,
+     Location: i.Location,
+     MeetingUrl: i.MeetingUrl,
+     Status: i.Status.ToString(),
+     Feedback: i.Feedback,
+     CreatedAt: i.CreatedAt
+ )).ToList(),
+ AppliedAt: x.AppliedAt,
+ LastStatusChangedAt: x.LastStatusChangedAt
+))
+.ToListAsync(ct);
+                
             return Ok(new ApplicationDetailsDto(Data: apps, PageLimit:pageLimit, PageNumber: pageNumber, Total: total));
         }
         [Authorize]
@@ -83,29 +128,72 @@ namespace Jobby.Controllers
 
             var total = await baseQuery.CountAsync(ct);
             var apps = await baseQuery
-              .Include(x => x.Job)
-              .Include(x => x.CandidateUser)
-              .Include(x => x.ApplicationFiles).ThenInclude(af => af.File)
-              .Include(x => x.StatusHistory)
-              .Include(x => x.Notes)
-              .Include(x => x.Interviews)
-              .OrderByDescending(x => x.AppliedAt)
-              .Skip((pageNumber - 1) * pageLimit)
-              .Take(pageLimit)
-              .Select(x => new ApplicationDetailDto(
-                  Job: x.Job,
-                  Status: x.Status,
-                  CandidateUser: x.CandidateUser,
-                  Source: x.Source,
-                  CoverLetter: x.CoverLetter,
-                  ApplicationFiles: x.ApplicationFiles.ToList(),
-                  ApplicationStatusHistory: x.StatusHistory.ToList(),
-                  ApplicationNotes: x.Notes.ToList(),
-                  Interviews: x.Interviews.ToList(),
-                  AppliedAt: x.AppliedAt,
-                  LastStatusChangedAt: x.LastStatusChangedAt
-              ))
-              .ToListAsync(ct);
+    .AsNoTracking()
+    .OrderByDescending(x => x.AppliedAt)
+    .Skip((pageNumber - 1) * pageLimit)
+    .Take(pageLimit)
+    .Select(x => new ApplicationDetailDto(
+        Id: x.Id,
+        Job: new JobMiniDto(
+            Id: x.Job.Id,
+            OrganizationId: x.Job.OrganizationId,
+            Title: x.Job.Title,
+            Location: x.Job.Location,
+            LocationType: x.Job.LocationType,
+            EmploymentType: x.Job.EmploymentType,
+            Status: x.Job.Status,
+            SalaryMin: x.Job.SalaryMin,
+            SalaryMax: x.Job.SalaryMax,
+            Currency: x.Job.Currency,
+            PublishedAt: x.Job.PublishedAt
+        ),
+        Status: x.Status,
+        Candidate: new CandidateMiniDto(
+            Id: x.CandidateUser.Id,
+            Email: x.CandidateUser.Email!,
+            FirstName: x.CandidateUser.FirstName,
+            LastName: x.CandidateUser.LastName
+        ),
+        Source: x.Source,
+        CoverLetter: x.CoverLetter,
+        Files: x.ApplicationFiles.Select(af => new ApplicationFileDto(
+            FileId: af.FileId,
+            OriginalName: af.File.OriginalName,
+            ContentType: af.File.ContentType,
+            SizeBytes: af.File.SizeBytes,
+            FilePurpose: af.FilePurpose
+        )).ToList(),
+        StatusHistory: x.StatusHistory.Select(h => new ApplicationStatusHistoryDto(
+            Id: h.Id,
+            FromStatus: h.FromStatus,
+            ToStatus: h.ToStatus,
+            ChangedByUserId: h.ChangedByUserId,
+            Reason: h.Reason,
+            ChangedAt: h.ChangedAt
+        )).ToList(),
+        Notes: x.Notes.Select(n => new ApplicationNoteDto(
+            Id: n.Id,
+            AuthorUserId: n.AuthorUserId,
+            NoteType: n.NoteType.ToString(),
+            Visibility: n.Visibility.ToString(),
+            Content: n.Content,
+            CreatedAt: n.CreatedAt
+        )).ToList(),
+        Interviews: x.Interviews.Select(i => new InterviewDto(
+            Id: i.Id,
+            Stage: i.Stage.ToString(),
+            StartsAt: i.StartsAt,
+            EndsAt: i.EndsAt,
+            Location: i.Location,
+            MeetingUrl: i.MeetingUrl,
+            Status: i.Status.ToString(),
+            Feedback: i.Feedback,
+            CreatedAt: i.CreatedAt
+        )).ToList(),
+        AppliedAt: x.AppliedAt,
+        LastStatusChangedAt: x.LastStatusChangedAt
+    ))
+    .ToListAsync(ct);
             // step 4 return result
             return Ok(new ApplicationDetailsDto(Data: apps, PageLimit: pageLimit, PageNumber: pageNumber, Total: total));
         }

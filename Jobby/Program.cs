@@ -1,23 +1,27 @@
 using System.Text;
+using System.Text.Json.Serialization;
+using AutoMapper;
+using Azure.Identity;
+using Azure.Storage.Blobs;
+using FluentValidation;
 using Jobby.Auth;
 using Jobby.Data.context;
 using Jobby.Data.entities;
+using Jobby.Dtos.Validations.Organization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
-using AutoMapper;
-using FluentValidation;
-using Jobby.Dtos.Validations.Organization;
-using Microsoft.AspNetCore.Authorization;
-using Azure.Storage.Blobs;
-using Azure.Identity;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(o =>
+{
+    o.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+}); ;
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AppDbContext>(options =>
