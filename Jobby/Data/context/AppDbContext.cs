@@ -13,7 +13,7 @@ namespace Jobby.Data.context
         public DbSet<OrganizationInvites> OrganizationInvites { get; set; }
         public DbSet<ApplicationNote> ApplicationNotes { get; set; }
         public DbSet<ApplicationStatusHistory> ApplicationStatusHistory { get; set; }
-        public DbSet<Interview> Interview { get; set; }
+        public DbSet<Interview> Interviews { get; set; }
         public DbSet<JobApplications> JobApplications { get; set; }
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<Files> Files { get; set; }
