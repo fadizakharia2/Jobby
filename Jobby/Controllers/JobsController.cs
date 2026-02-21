@@ -1,4 +1,5 @@
 ﻿using System.Net.NetworkInformation;
+using System.Security.Claims;
 using AutoMapper;
 using FluentValidation;
 using Jobby.Data.context;
@@ -18,32 +19,55 @@ namespace Jobby.Controllers
     [ApiController]
     public class JobsController(AppDbContext db, IMapper mapper) : ControllerBase
     {
+
         [Authorize]
         [HttpPost("{orgId:guid}")]
-        public async Task <ActionResult<JobsDto>> CreateJobPosting(JobsCreateRequestDto req,[FromServices] IAuthorizationService auth, IValidator<JobsCreateRequestDto> validator, Guid orgId,CancellationToken ct)
+        public async Task<ActionResult<JobsDto>> CreateJobPosting(
+            [FromRoute] Guid orgId,
+            [FromBody] JobsCreateRequestDto req,
+            [FromServices] IAuthorizationService auth,
+            [FromServices] IValidator<JobsCreateRequestDto> validator,
+            CancellationToken ct)
         {
-            
-            // step 1 validate user and organization role
-            var authResult =  await auth.AuthorizeAsync(User, orgId, "OrgAdmin");
+            // 0) get current user id (Identity uses NameIdentifier)
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized("Invalid user id in token.");
+
+            // 1) auth
+            var authResult = await auth.AuthorizeAsync(User, orgId, "OrgAdmin");
             if (!authResult.Succeeded)
-            {
-                return Forbid("User is not allowed to access this organization");
-            }
-                // step 2 validate request body
-          var validationResult = await validator.ValidateAsync(req);
+                return Forbid();
+
+            // 2) validate body
+            var validationResult = await validator.ValidateAsync(req, ct);
             if (!validationResult.IsValid)
             {
                 foreach (var error in validationResult.Errors)
-                {
                     ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
-                }
-                return BadRequest(ValidationProblem(ModelState));
+
+                return ValidationProblem(ModelState);
             }
-            // step 3 create entity
-            db.Add(mapper.Map<Jobs>(req));
-                // step 4 save entity
-           var savedEntity = await db.SaveChangesAsync(ct);
-               return Ok(mapper.Map<JobsDto>(savedEntity));
+
+            // 3) ensure org exists
+            var orgExists = await db.Organizations.AnyAsync(o => o.Id == orgId, ct);
+            if (!orgExists)
+                return NotFound($"Organization {orgId} not found.");
+
+            // (optional) ensure user exists to avoid FK crash if token is stale
+            var userExists = await db.Users.AnyAsync(u => u.Id == userId, ct);
+            if (!userExists)
+                return Unauthorized("User no longer exists.");
+
+            // 4) map + force FK fields
+            var job = mapper.Map<Jobs>(req);
+            job.OrganizationId = orgId;
+            job.CreatedByUserId = userId;
+
+            db.Jobs.Add(job);
+            await db.SaveChangesAsync(ct);
+
+            return Ok(mapper.Map<JobsDto>(job));
         }
 
         [Authorize]
@@ -59,18 +83,40 @@ namespace Jobby.Controllers
 
             return Ok(new JobsDetailsResponseDto(Data: result, Total: total, PageNumber: PageNumber, PageLimit: PageLimit));
         }
-        [Authorize]
-        [HttpGet("")]
-        public async Task<ActionResult> FetJobs(Mapper mapper, [FromQuery] int PageNumber, [FromQuery] int PageLimit, CancellationToken ct, [FromQuery] string? SortField = "CreatedAt", [FromQuery] string? SortValue = "", [FromQuery] string? q = "")
+
+        [HttpGet]
+        public async Task<ActionResult> GetJobs(
+         IMapper mapper,
+         [FromQuery] int PageNumber = 1,
+         [FromQuery] int PageLimit = 10,
+         [FromQuery] string SortField = "CreatedAt",
+         [FromQuery] string SortValue = "",
+         [FromQuery] string? q = "",
+         CancellationToken ct = default)
         {
-            var query = db.Jobs.Where(x => x.Title.Contains(q) || (x.Description != null && x.Description.Contains(q)));
-            var term = q.Trim();
+            var term = (q ?? "").Trim();
+
+            IQueryable<Jobs> query = db.Jobs;
+
+            if (!string.IsNullOrWhiteSpace(term))
+            {
+                query = query.Where(x =>
+                    x.Title.Contains(term) ||
+                    (x.Description != null && x.Description.Contains(term)));
+            }
+
             query = ApplyJobsSort(query, SortField, SortValue);
+
             var total = await query.CountAsync(ct);
 
-            var result = await query.Select(x => mapper.Map<JobsDto>(x)).Skip((PageNumber - 1) * PageLimit).Take(PageLimit).ToListAsync(ct);
+            var result = await query
+                .Include(x=>x.Organization)
+                .Skip((PageNumber - 1) * PageLimit)
+                .Take(PageLimit)
+                .Select(x => mapper.Map<JobsDto>(x)) // better: ProjectTo (but ok)
+                .ToListAsync(ct);
 
-            return Ok(new JobsDetailsResponseDto(Data: result, Total: total, PageNumber: PageNumber, PageLimit: PageLimit));
+            return Ok(new JobsDetailsResponseDto(result, PageLimit, PageNumber, total));
         }
         [Authorize]
         [HttpPatch("{orgId:guid}/{jobId:guid}")]

@@ -1,4 +1,5 @@
-﻿using Jobby.Data.enums;
+﻿using Jobby.Data.entities;
+using Jobby.Data.enums;
 
 namespace Jobby.Dtos.jobs
 {
@@ -14,6 +15,7 @@ namespace Jobby.Dtos.jobs
         int? SalaryMin,
         int? SalaryMax,
         string? Currency,
+        Organization Organization,
         Guid CreatedByUserId,
         DateTimeOffset? PublishedAt,
         DateTimeOffset CreatedAt,

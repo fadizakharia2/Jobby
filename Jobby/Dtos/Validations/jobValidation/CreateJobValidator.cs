@@ -49,8 +49,19 @@ namespace Jobby.Dtos.Validations.jobValidation
 
             return CultureInfo
                 .GetCultures(CultureTypes.SpecificCultures)
-                .Select(c => new RegionInfo(c.LCID))
-                .Any(r => r.ISOCurrencySymbol == currency.ToUpperInvariant());
+                .Select(c =>
+                {
+                    try
+                    {
+                        return new RegionInfo(c.Name);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                })
+                .Where(r => r != null)
+                .Any(r => r!.ISOCurrencySymbol.Equals(currency, StringComparison.OrdinalIgnoreCase));
         }
     }
 }
