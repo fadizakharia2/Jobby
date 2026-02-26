@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using AutoMapper;
 using Jobby.Auth;
 using Jobby.Data.context;
 using Jobby.Data.entities;
@@ -17,6 +18,7 @@ namespace Jobby.Controllers
     public class AuthController(
         UserManager<User> userManager,
         SignInManager<User> signInManager,
+        IMapper mapper,
         AppDbContext db,
         ITokenService tokens,
         IOptions<JwtOptions> options) : ControllerBase
@@ -87,6 +89,23 @@ namespace Jobby.Controllers
             db.RefreshTokens.Add(new RefreshToken { UserId = user.Id, TokenHash = tokens.HashRefreshToken(refresh), ExpiresAt = DateTimeOffset.UtcNow.AddDays(options.Value.RefreshTokenDays) });
             await db.SaveChangesAsync();
             return Ok(new AuthResponseDto(access, refresh, exp));
+        }
+        [Authorize]
+        [HttpGet]
+        public async Task<ActionResult<UserResponseDto>> GetProfile(CancellationToken ct)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                return Forbid();
+
+            var loggedInUser = await db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == userId, ct);
+
+            if (loggedInUser is null)
+                return NotFound();
+
+            return Ok(mapper.Map<UserResponseDto>(loggedInUser));
         }
     }
 }

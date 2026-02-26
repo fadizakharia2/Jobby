@@ -1,12 +1,14 @@
 ﻿using AutoMapper;
 using Jobby.Data.entities;
 using Jobby.Dtos.jobs;
+using Jobby.Dtos.Mini;
 
 namespace Jobby.Dtos.Profiles
 {
     public class JobsProfile : Profile
     {
         public JobsProfile() {
+            CreateMap<Organization, OrganizationMiniDto>();
             CreateMap<Jobs, JobsDto>();
 
             CreateMap<JobsCreateRequestDto, Jobs>()

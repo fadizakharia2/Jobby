@@ -31,7 +31,10 @@ namespace Jobby.Dtos.Mini
         long SizeBytes,
         FilePurpose FilePurpose
     );
-
+    public record OrganizationMiniDto(
+    Guid Id,
+    string Name
+);
     public record ApplicationStatusHistoryDto(
         Guid Id,
         ApplicationStatus? FromStatus,

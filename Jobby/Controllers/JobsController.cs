@@ -1,6 +1,7 @@
 ﻿using System.Net.NetworkInformation;
 using System.Security.Claims;
 using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using FluentValidation;
 using Jobby.Data.context;
 using Jobby.Data.entities;
@@ -108,14 +109,13 @@ namespace Jobby.Controllers
             query = ApplyJobsSort(query, SortField, SortValue);
 
             var total = await query.CountAsync(ct);
-
             var result = await query
-                .Include(x=>x.Organization)
+                .AsNoTracking()
+                // Include not needed when using ProjectTo (usually)
                 .Skip((PageNumber - 1) * PageLimit)
                 .Take(PageLimit)
-                .Select(x => mapper.Map<JobsDto>(x)) // better: ProjectTo (but ok)
+                .ProjectTo<JobsDto>(mapper.ConfigurationProvider)
                 .ToListAsync(ct);
-
             return Ok(new JobsDetailsResponseDto(result, PageLimit, PageNumber, total));
         }
         [Authorize]
